@@ -1,0 +1,120 @@
+#415 Project Client
+import socket
+import hashlib
+
+address = ('10.10.10.10', 8005)                         #the server listening on address 10.10.40.11
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)    #udp
+s.bind(address)                                         #bind the address to that socket
+
+flag = 0
+
+file = open(input("Request File Name: "))               #ask for file desired to be sent to server
+message = file.read()                                   #read the file
+
+#ENCRYPTION
+a=message                                               #set the read file into a new variable to be encrypted
+number=5                                                #set value to be shifted for encryption
+b=list(a)
+str(b)
+c=[ord(x)for x in(b)]                                   #change the characters in the string to ascii values
+d=[]
+for i in c:
+    d.append(i+number)                                  #add the shifted value to the ascii values
+e=[chr(i) for i in (d)]                                 #change values in characters
+e="".join(e)                                            #place characters in string
+
+mes = e.encode('utf-8')                                 #encodes message so it can be sent 
+
+s.sendto(mes,('10.10.10.11',5008))                      #sends encoded message to 10.10.40.12 port 5008
+print("File sent: ", e)                                 #state the file that is sent for verification
+
+#HASH FOR DATA
+hash_object = hashlib.sha256(message.encode())          #place the decrypted data into hash library to encrypt
+hex_dig = hash_object.hexdigest()                       #encrypt the data into hash
+s.sendto(hex_dig.encode('utf-8'),('10.10.10.11', 5008)) #send hash to server
+print("Hash sent: ", hex_dig, "\nTo: 10.10.40.12")      #print hash that was sent
+
+#WAITS FOR A RESPONSE
+
+while flag == 0:        
+    
+    data, addr = s.recvfrom(40965)                      #buffer size of 2048
+    data = data.decode('utf-8')                         #decodes any received data
+    datahash, addr = s.recvfrom(2048)                   #buffer size for hash
+    datahash = datahash.decode('utf-8')                 #decodes any received data
+    
+    if data ==  "Server has disconnected.":             #ends program if Server disconnects
+        print("\n", data)                               #prints that server disconnectd
+        flag = 1
+        
+    else:
+        print ("\nReceived: \n", data, "\nFrom: \n", addr)  #prints the received data and from where
+
+        #DECRYPT THE DATA
+        a=data                                              #places received data into variable
+        number=5                                            #sets the shift value
+        b=list(a)
+        str(b)
+        c=[ord(x)for x in(b)]                               #changes the values from characters to ascii
+        d=[]
+        for i in c:     
+            d.append(i-number)                              #subract the shift from the ascii values
+        e=[chr(i) for i in (d)]                             #change back into characters
+        e="".join(e)                                        #place into string
+
+        #HASH FOR DATA
+        hash_object = hashlib.sha256(e.encode())            #place the decrypted data into hash library
+        hex_dig = hash_object.hexdigest()                   #encrypt the decrypted data into hash
+        print ("Generated Hash: \n", hex_dig)               #print the received hash value
+        
+        print ("Received Hash: \n", datahash)               #print the received hash value
+
+        #COMPARE HASH VALUES TO SEE IF DATA IS CORRUPTED
+        if hex_dig != datahash:                                         #if the generated has is not equal to the received hash
+            message = "Transmission Error: Hash values do not match."   #print there is an error
+            mes = message.encode('utf-8')                               #encode the error so it can send
+            s.sendto(mes,('10.10.10.11',5008))                          #send error to the client
+            print (message)
+            flag = 1
+
+        print ("Decrypted: \n", e)                                      #print the decrypted data
+        
+        r = input("\nRequest another file (y or n)? ")                  #does the client want to reply?
+
+        if r == "y":
+            #INPUT FILE SENT
+            file = open(input("\nRequest File Name: "))                 #input desired file name to send
+            message = file.read()                                       #read the file
+
+            #ENCRYPTION
+            a=message                                                   #place file into variable
+            number=5                                                    #set the shift value
+            b=list(a)
+            str(b)
+            c=[ord(x)for x in(b)]                                       #change the values in the string to ascii
+            d=[]
+            for i in c:
+                d.append(i+number)                                      #add the shift to the ascii values
+            e=[chr(i) for i in (d)]                                     #change the ascii values back to characters
+            e="".join(e)                                                #place characters into string
+    
+            mes = e.encode('utf-8')                                     #encode the message
+
+            s.sendto(mes,('10.10.10.11',5008))                          #send the message
+            print("File sent: ", e)                                     #print the file that was sent
+
+            #HAS FOR DATA
+            hash_object = hashlib.sha256(message.encode())              #place the encrypted data into hash library
+            hex_dig = hash_object.hexdigest()                           #encrypt the encrypted data into hash
+            s.sendto(hex_dig.encode('utf-8'),('10.10.10.11', 5008))     #send the hash value
+            print("Hash sent: ", hex_dig, "\nTo: 10.10.40.12")          #print the sent hash value
+
+        else:
+            #TERMINATES THE CONNECTION
+            message = "Client has disconnected."
+            mes = message.encode('utf-8')
+            s.sendto(mes,('10.10.10.11',5008))                          #send that the client has disconnected
+            s.sendto(mes,('10.10.10.11',5008))
+            print("\nGoodbye!")
+            flag = 1                                                    #breaks out of while loop and stops program
+s.close()
