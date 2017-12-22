@@ -1,0 +1,12 @@
+#import file and convert to hash
+text = open("lab4file.txt") #open file
+file = text.read()
+print(file)
+
+
+import hashlib
+code = file.encode() #convert to binary
+
+hash_object = hashlib.sha512(code)
+hex_dig = hash_object.hexdigest()
+print(hex_dig)
